@@ -45,8 +45,8 @@ class Comment {
             check.text);
     }
     
-    static async addReply(communityDocument: ICommunity, parentCommentid: string, comment: IPartialCommentMeta) {
-        const parentComment = await commentModel.findById(parentCommentid);
+    static async addReply(communityDocument: ICommunity, post: string, parentCommentid: string, comment: IPartialCommentMeta) {
+        const parentComment = await commentModel.findOne({"_id": parentCommentid, "meta.parentPost": post});
         const commentMeta: ICommentMeta = { ...comment, parentPost: parentComment.meta.parentPost, parentComment: parentComment.id };
         const reply = new commentModel({ meta: commentMeta });
         await reply.save();
@@ -54,8 +54,9 @@ class Comment {
         return communityDocument;
     }
 
-    static async getReply(commentId: string) {
-        const comment = await commentModel.findById(commentId).populate("replies");
+    static async getReply(parentPost:string, commentId: string) {
+        const comment = await commentModel.findOne({"_id":commentId, "meta.parentPost": parentPost})
+            .populate("replies").exec();
         return comment.replies as IComments[];
     }
 

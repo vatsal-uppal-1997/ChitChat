@@ -46,19 +46,70 @@ const upload = multer({storage: storage,
 
 const asyncCommGetter = new GetCommunity();
 
-routes.get("/", communityAcl, async (req:Request, res:Response) => {
+/* All */
+
+routes.get("/", async (req:Request, res:Response) => {
     Community.getBasicDetails(req, res);
 });
 routes.get("/joined",  async (req:Request, res:Response) => {
     const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.joined);
     res.json(send);
 });
-routes.get("/my",  async (req:Request, res:Response) => {
-    const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.owner);
+routes.get("/requested", async (req:Request, res:Response) => {
+    const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.requested);
     res.json(send);
 });
-routes.get("/requested", communityAcl, async (req:Request, res:Response) => {
-    const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.requested);
+
+/* Group members only */
+
+
+routes.get("/:community", async (req:Request, res: Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getCommunity(req, res);
+});
+
+/* Posts relate routes */
+
+routes.post("/:community", async (req:Request, res: Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.addPost(req, res);
+});
+
+routes.get("/:community/:post", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getPost(req, res);
+});
+
+routes.patch("/:community/:post", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.editPost(req, res);
+});
+
+routes.delete("/:community/:post", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.deletePost(req, res);
+});
+
+routes.post("/:community/:post/comment", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.addComment(req, res);
+});
+
+routes.get("/:community/:post/comment/:comment", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getReply(req, res);
+});
+
+routes.post("/:community/:post/comment/:comment", async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.addReply(req, res);
+});
+/* --- */
+
+
+
+routes.get("/my",  async (req:Request, res:Response) => {
+    const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.owner);
     res.json(send);
 });
 

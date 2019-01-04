@@ -15,10 +15,10 @@ class Post {
 
     static isPostMeta(check): check is IPostMeta {
         return (check &&
-            check.owner &&
-            check.date &&
-            check.text &&
-            check.locked);
+            check.hasOwnProperty("owner") &&
+            check.hasOwnProperty("date") &&
+            check.hasOwnProperty("text") &&
+            check.hasOwnProperty("locked"));
     }
 
     static async addPost(communityDocument:ICommunity, content: IPostMeta) {
@@ -27,7 +27,7 @@ class Post {
         });
         const post = await toAdd.save();
         const newCommunityDocument = await communityModel.findByIdAndUpdate(communityDocument.id, 
-        {$addToSet: {posts: post}});
+        {$addToSet: {posts: post}}, {new: true});
         // if (this.isPostsPopulated(communityDocument.posts))
         //     communityDocument.posts.push(post);
         // else
@@ -46,7 +46,7 @@ class Post {
             if (!check)
                 throw Error("Post not found");
         }
-        const post = await postModel.findById(id).populate("comments");
+        const post = await postModel.findById(id).populate("comments").exec();
         return post;
     }
 

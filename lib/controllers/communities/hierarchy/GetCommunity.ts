@@ -12,7 +12,7 @@ class GetCommunity {
         try {
             const comm = new Community(name);
             await comm.init();
-            this.mappings.set(name, new Community(name));
+            this.mappings.set(name, comm);
             return this.mappings.get(name);
         } catch (err) {
             throw err;

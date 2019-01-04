@@ -45,13 +45,24 @@
       methods:
         - GET
       action: allow
+
+    - resource: "community/"
+      methods:
+        - GET
+        - POST
+      action: allow
+    - resource: "community/joined"
+      methods:
+        - GET
+      action: allow
+    - resource: "community/requested"
+      methods:
+        - GET
+      action: allow
           
 
 - group: 'community builder'
   permissions:
-    - resource: "community/*"
-      methods: "*"
-      action: allow
     - resource: "users/community%20builder/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
       methods:
         - GET
@@ -76,6 +87,10 @@
     - resource: 'users/loggedIn'
       methods:
         - GET
+      action: allow
+      
+    - resource: "community/*"
+      methods: "*"
       action: allow
 
 - group: 'confirm'

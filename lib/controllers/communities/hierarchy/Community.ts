@@ -22,8 +22,7 @@ export class Community {
     async init() {
         try {
             const getCommunity = await communityModel
-                .findOne({ meta: { name: this.name } })
-                .populate("posts");
+                .findOne({ "meta.name": this.name });
             if (!getCommunity)
                 throw Error(`${this.name} community does not exist`);
             this.communityDocument = getCommunity;
@@ -41,15 +40,15 @@ export class Community {
      * @param res response object
      */
     static async getBasicDetails(req: Request, res: Response) {
-        try{
+        try {
             const userComm = await LookUp.getCommunities(req.user.id);
             let exclude = [];
             userComm.memberOf.forEach((val) => {
-                exclude.push(val.community); 
+                exclude.push(val.community);
             })
             console.log(exclude);
-            let data = await communityModel.find({_id: {$nin: exclude}})
-            .select("meta");
+            let data = await communityModel.find({ _id: { $nin: exclude } })
+                .select("meta");
             res.json(data);
         } catch (err) {
             res.status(500).json(err);
@@ -108,9 +107,11 @@ export class Community {
     async getCommunity(req: Request, res: Response) {
         try {
             this.communityDocument = await this.communityDocument
-                .populate("posts");
+                .populate({path: "posts", model: "Post", populate: {path: "comments"}}).execPopulate();
+            console.log(this.communityDocument);
             res.json(this.communityDocument.posts);
         } catch (err) {
+            console.log(err);
             res.status(500).json(err);
         }
     }
@@ -364,21 +365,27 @@ export class Community {
 
     /**
      * Add a new post to the community
-     * @param req req object expects req.body.post
+     * @param req req object expects owner, date, text
      * @param res response object
      */
     async addPost(req: Request, res: Response) {
-        const postMeta = req.body.post;
+        let postMeta = { ...req.body };
         postMeta.locked = false;
-        if (Post.isPostMeta(postMeta)) {
-            try {
-                this.communityDocument = await Post.addPost(this.communityDocument, postMeta);
-                res.status(200).json({ message: "post added" });
-            } catch (err) {
-                res.status(500).json(err);
+        console.log(postMeta);
+        try {
+            if (Post.isPostMeta(postMeta)) {
+                try {
+                    this.communityDocument = await Post.addPost(this.communityDocument, postMeta);
+                    console.log(this.communityDocument);
+                    res.status(200).json({ message: "post added" });
+                } catch (err) {
+                    res.status(500).json(err);
+                }
+            } else {
+                res.status(400).send();
             }
-        } else {
-            res.status(400).send();
+        } catch (err) {
+            res.status(500).json(err);
         }
     }
 
@@ -429,6 +436,7 @@ export class Community {
                 this.communityDocument = await Post.deletePost(this.communityDocument, req.params.post);
                 res.status(200).json({ message: "post deleted" });
             } catch (err) {
+                console.log(err);
                 res.status(500).json(err);
             }
         } else {
@@ -438,41 +446,45 @@ export class Community {
 
     /**
      * Add a comment to req.params.post
-     * @param req req object expects req.params.post and req.body.comment
+     * @param req req object expects req.params.post and date and text in req.body
      * @param res response object
      */
     async addComment(req: Request, res: Response) {
-        const commentMeta = req.body.comment;
+        let commentMeta = {...req.body};
+        commentMeta.owner = req.user.id;
         commentMeta.parentPost = req.params.post;
         if (Comment.isCommentMeta(commentMeta)) {
             try {
                 this.communityDocument = await Comment.addComment(this.communityDocument, req.params.post, commentMeta);
-                res.json({message: "comment added"});
+                res.json({ message: "comment added" });
             } catch (err) {
+                console.log(err);
                 res.status(500).send();
             }
         } else {
-            res.json(400).send();
+            res.status(400).send();
         }
     }
 
-    
+
     /**
      * Add a reply to req.params.comment
-     * @param req req object expects req.params.comment and req.body.comment
+     * @param req req object expects req.params.comment and date and text in req.body
      * @param res response object
      */
     async addReply(req: Request, res: Response) {
-        const commentMeta = req.body.comment;
-        if (Comment.isPartialCommentMeta(commentMeta) && req.params && req.params.comment) {
+        const commentMeta = {...req.body};
+        commentMeta.owner = req.user.id;
+        if (Comment.isPartialCommentMeta(commentMeta) && req.params && req.params.comment && req.params.post) {
             try {
-                this.communityDocument = await Comment.addReply(this.communityDocument, req.params.comment, commentMeta);
-                res.json({message: "comment added"});
+                this.communityDocument = await Comment.addReply(this.communityDocument, req.params.post, req.params.comment, commentMeta);
+                res.json({ message: "comment added" });
             } catch (err) {
+                console.log(err);
                 res.status(500).send();
             }
         } else {
-            res.json(400).send();
+            res.status(400).send();
         }
     }
 
@@ -482,9 +494,9 @@ export class Community {
      * @param res response object
      */
     async getReply(req: Request, res: Response) {
-        if (req.params && req.params.comment) {
+        if (req.params && req.params.post && req.params.comment) {
             try {
-                const replies = await Comment.getReply(req.params.comment);
+                const replies = await Comment.getReply(req.params.post, req.params.comment);
                 res.json(replies);
             } catch (err) {
                 res.status(500).send();
@@ -503,7 +515,7 @@ export class Community {
         if (req.params && req.params.comment && req.body && req.body.text) {
             try {
                 await Comment.editComment(req.params.comment, req.body.text);
-                res.json({message: "comment edited"});
+                res.json({ message: "comment edited" });
             } catch (err) {
                 res.status(500).send();
             }
@@ -521,7 +533,7 @@ export class Community {
         if (req.params && req.params.comment) {
             try {
                 await Comment.deleteComment(req.params.comment);
-                res.json({message: "comment deleted"});
+                res.json({ message: "comment deleted" });
             } catch (err) {
                 res.status(500).send();
             }
