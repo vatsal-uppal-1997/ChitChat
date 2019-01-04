@@ -1,0 +1,168 @@
+            if (req.user && req.user.id) {
+                if (this.communityDocument.meta.isOpen) {
+                    if (this.isPopulated(this.communityDocument.members)) {
+                        const profile = await userProfile.findById(req.user.id);
+                        this.communityDocument.members.push(profile);
+                    } else {
+                        this.communityDocument.members.push(req.user.id);
+                    }
+                    this.communityDocument = await this.communityDocument.save();
+                    await LookUp.addCommunity(req.user.id, this.communityDocument.id);
+                    res.json({ message: "Group Joined" });
+                } else {
+                    if (this.isPopulated(this.communityDocument.requests)) {
+                        const profile = await userProfile.findById(req.user.id);
+                        this.communityDocument.requests.push(profile);
+                    } else {
+                        this.communityDocument.requests.push(req.user.id);
+                    }
+                    this.communityDocument = await this.communityDocument.save();
+                    res.json({ message: "Request Applied" });
+                }
+            } else {
+                res.status(400);
+            }
+
+
+            async leave(req: Request, res: Response) {
+        const userData = res.locals.user;
+        if (this.isCommunityStatusPair(userData)) {
+            switch (userData.status) {
+                case status.admin:
+                    if (this.isPopulated(this.communityDocument.admins))
+                        this.communityDocument.admins.filter(elem => {
+                            return elem.id !== req.user.id
+                        });
+                    else
+                        this.communityDocument.admins.filter(elem => {
+                            return (!elem.equals(req.user.id));
+                        });
+                    break;
+                case status.member:
+                    if (this.isPopulated(this.communityDocument.members))
+                        this.communityDocument.members.filter(elem => {
+                            return elem.id !== req.user.id;
+                        });
+                    else
+                        this.communityDocument.members.filter(elem => {
+                            return (!elem.equals(req.user.id));
+                        });
+                    break;
+                default:
+                    return res.status(400).send();
+            }
+            try {
+                await this.communityDocument.save();
+                await LookUp.removeCommunity(req.user.id, this.communityDocument.id);
+                res.json({ message: "community left" });
+            } catch (err) {
+                res.status(500).json(err);
+            }
+        } else {
+            res.status(400).send();
+        }
+    }
+
+        /**
+     * Promotes a member to admin
+     * NOTE --> 
+     * REQUIRED URL PATTERN /api/community/:community/members/:member/promote (where :member is the member id)
+     * REQUIRED req.body.status (where status is admin, member or owner)
+     * @param req request object
+     * @param res response object
+     */
+    async promote(req: Request, res: Response) {
+        if (req.params && req.params.member && req.params.action && req.body && req.body.status) {
+            if (req.body.status === status.member) {
+                try {
+                    if (this.isPopulated(this.communityDocument.members)) {
+                        const profile = this.communityDocument.members.find((ele) => ele.id === req.params.member);
+                        if (profile) {
+                            this.isPopulated(this.communityDocument.admins) ?
+                                this.communityDocument.admins.push(profile) :
+                                this.communityDocument.admins.push(profile.id);
+                            await this.communityDocument.save();
+                        } else {
+                            res.status(400).send();
+                        }
+                    } else {
+                        const lenBefore = this.communityDocument.members.length;
+                        this.communityDocument.members = this.communityDocument.members.filter((ele) => (!ele.equals(req.body.status)));
+                        const lenAfter = this.communityDocument.members.length;
+                        if (lenBefore === lenAfter)
+                            return res.status(400).send();
+                        if (this.isPopulated(this.communityDocument.admins)) {
+                            const profile = await userProfile.findById(req.params.member);
+                            if (profile) {
+                                this.communityDocument.admins.push(profile);
+                            } else {
+                                res.status(400).send();
+                            }
+                            await this.communityDocument.save();
+                        } else {
+                            this.communityDocument.admins.push(req.params.member);
+                            await this.communityDocument.save();
+                        }
+                    }
+                } catch (err) {
+                    res.status(500).json(err);
+                }
+            } else {
+                res.status(400).send();
+            }
+        } else {
+            res.status(400).send();
+        }
+    }
+
+    /**
+     * Demotes an admin to member
+     * NOTE --> 
+     * REQUIRED URL PATTERN /api/community/:community/members/:member/demote (where :member is the member id)
+     * REQUIRED req.body.status (where status is admin, member or owner)
+     * @param req request object
+     * @param res response object
+     */
+    async demote(req: Request, res: Response) {
+        if (req.params && req.params.member && req.params.action && req.body && req.body.status) {
+            if (req.body.status === status.admin) {
+                try {
+                    if (this.isPopulated(this.communityDocument.admins)) {
+                        const profile = this.communityDocument.admins.find((ele) => ele.id === req.params.member);
+                        if (profile) {
+                            this.isPopulated(this.communityDocument.members) ?
+                                this.communityDocument.members.push(profile) :
+                                this.communityDocument.members.push(profile.id);
+                            await this.communityDocument.save();
+                        } else {
+                            res.status(400).send();
+                        }
+                    } else {
+                        const lenBefore = this.communityDocument.admins.length;
+                        this.communityDocument.members = this.communityDocument.admins.filter((ele) => (!ele.equals(req.body.status)));
+                        const lenAfter = this.communityDocument.admins.length;
+                        if (lenBefore === lenAfter)
+                            return res.status(400).send();
+                        if (this.isPopulated(this.communityDocument.members)) {
+                            const profile = await userProfile.findById(req.params.member);
+                            if (profile) {
+                                this.communityDocument.members.push(profile);
+                            } else {
+                                res.status(400).send();
+                            }
+                            await this.communityDocument.save();
+                        } else {
+                            this.communityDocument.members.push(req.params.member);
+                            await this.communityDocument.save();
+                        }
+                    }
+                } catch (err) {
+                    res.status(500).json(err);
+                }
+            } else {
+                res.status(400).send();
+            }
+        } else {
+            res.status(400).send();
+        }
+    }

@@ -1,0 +1,109 @@
+# - group: user
+#   permissions:
+#     - resource: users/*
+#       methods:
+#         - GET
+#         - POST
+#         - DELETE
+#       action: allow
+#       subRoutes:
+#         - resource: 'profile'
+#           methods:
+#             - DELETE
+#           action: deny
+
+- group: 'admin'
+  permissions:
+    - resource: '*'
+      methods: '*'
+      action: allow
+
+- group: 'user'
+  permissions:
+    - resource: "users/user/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+        - PATCH
+      action: allow
+    - resource: "users/community%20builder/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+      action: allow
+    - resource: "users/admin/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+      action: allow
+    - resource: "users/logout"
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/auth'
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/loggedIn'
+      methods:
+        - GET
+      action: allow
+          
+
+- group: 'community builder'
+  permissions:
+    - resource: "community/*"
+      methods: "*"
+      action: allow
+    - resource: "users/community%20builder/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+        - PATCH
+      action: allow
+    - resource: "users/user/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+      action: allow
+    - resource: "users/admin/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,4}/*"
+      methods:
+        - GET
+      action: allow
+    - resource: "users/logout"
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/auth'
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/loggedIn'
+      methods:
+        - GET
+      action: allow
+
+- group: 'confirm'
+  permissions:
+    - resource: 'users/confirm'
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/auth'
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/loggedIn'
+      methods:
+        - GET
+      action: allow
+    - resource: "users/logout"
+      methods:
+        - POST
+      action: allow
+
+- group: 'guest'
+  permissions:
+    - resource: 'users/auth'
+      methods:
+        - POST
+      action: allow
+    - resource: 'users/loggedIn'
+      methods:
+        - GET
+      action: allow
