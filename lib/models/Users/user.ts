@@ -1,9 +1,13 @@
 import * as mongoose from "mongoose";
 import * as bcrypt from "bcrypt"; // For hashing password
+import { ICommunity } from "../Communities/community";
 
 
 // email, phone, city, password, role
 const user = new mongoose.Schema({
+    image: {
+        type: String
+    },
     email: {
         required: true,
         unique: true, 
@@ -38,8 +42,30 @@ const user = new mongoose.Schema({
         type: [String],
     },
     invitations: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "community"
+        type: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Community"
+            }
+        ],
+        default: []
+    },
+    memberOf: {
+        type: [ 
+            {
+                community: {
+                    type: mongoose.Types.ObjectId,
+                    ref: "Community"
+                },
+
+                status: {
+                    type: String,
+                    enum: ["admin", "member", "owner", "requested"],
+                    default: "member"
+                }
+            }
+        ],
+        default: []
     }
 });
 
@@ -57,6 +83,18 @@ user.path("phone").validate(function(val: number): boolean {
     return expression.test(val.toString());
 }, "Invalid Phone Number");
 
+export enum status {
+    admin = "admin",
+    member = "member",
+    owner = "owner",
+    requested = "requested"
+}
+
+export interface ICommunityStatusPair {
+    community: mongoose.Types.ObjectId | ICommunity,
+    status: status
+}
+
 // Base User
 export interface IUser extends mongoose.Document {
     
@@ -69,11 +107,14 @@ export interface IUser extends mongoose.Document {
 // User with profile filled
 export interface IUserProfile extends IUser {
     
+    image?: string;
     name: string;
     gender: string;
     dateOfBirth: string;
     description: string;
     interests: string[];
+    invitations: mongoose.Types.ObjectId | ICommunity;
+    memberOf: ICommunityStatusPair[]; 
 
 }
 
