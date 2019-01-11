@@ -2,6 +2,7 @@ import {Request, Response, Router} from "express";
 import * as multer from "multer";
 import {Community} from "../../controllers/communities/hierarchy/Community";
 import {communityAcl} from "../../controllers/communities/communityAcl";
+import {memberAcl} from "./memberAcl";
 import GetCommunity from "../../controllers/communities/hierarchy/GetCommunity";
 import { LookUp, userStates } from "../../controllers/communities/hierarchy/LookUp";
 
@@ -60,75 +61,94 @@ routes.get("/requested", async (req:Request, res:Response) => {
     res.json(send);
 });
 
+routes.post("/:community/join", memberAcl, async (req:Request, res:Response) => {
+    const comm = await asyncCommGetter.getCommunity(req.params.community);
+    comm.join(req, res);
+});
+
 /* Group members only */
 
+routes.post("/:community/leave", memberAcl, async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.leave(req, res);
+})
 
-routes.get("/:community", async (req:Request, res: Response) => {
+routes.get("/:community", memberAcl, async (req:Request, res: Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.getCommunity(req, res);
 });
 
+routes.get("/:community/details", memberAcl, async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getDetails(req, res);
+});
+
+routes.get("/:community/details/members", memberAcl, async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getMembers(req, res);
+});
+
+routes.get("/:community/details/members/admins", memberAcl, async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    data.getAdmins(req, res);
+});
+
+routes.post("/:community/details/members/:member/:action", memberAcl, async (req:Request, res:Response) => {
+    const data = await asyncCommGetter.getCommunity(req.params.community);
+    if (req.params.action === "promote")
+        data.promote(req, res);
+    else if (req.params.action === "demote")
+        data.demote(req, res);
+    else
+        res.status(400).send();
+});
+
 /* Posts relate routes */
 
-routes.post("/:community", async (req:Request, res: Response) => {
+routes.post("/:community", memberAcl, async (req:Request, res: Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.addPost(req, res);
 });
 
-routes.get("/:community/:post", async (req:Request, res:Response) => {
+routes.get("/:community/:post", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.getPost(req, res);
 });
 
-routes.patch("/:community/:post", async (req:Request, res:Response) => {
+routes.patch("/:community/:post", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.editPost(req, res);
 });
 
-routes.delete("/:community/:post", async (req:Request, res:Response) => {
+routes.delete("/:community/:post", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.deletePost(req, res);
 });
 
-routes.post("/:community/:post/comment", async (req:Request, res:Response) => {
+routes.post("/:community/:post/comment", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.addComment(req, res);
 });
 
-routes.get("/:community/:post/comment/:comment", async (req:Request, res:Response) => {
+routes.get("/:community/:post/comment/:comment", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.getReply(req, res);
 });
 
-routes.post("/:community/:post/comment/:comment", async (req:Request, res:Response) => {
+routes.post("/:community/:post/comment/:comment", memberAcl, async (req:Request, res:Response) => {
     const data = await asyncCommGetter.getCommunity(req.params.community);
     data.addReply(req, res);
 });
+
 /* --- */
 
-
+routes.post("/", upload.single("image"), (req:Request, res:Response) => {
+    Community.createCommunity(req, res);
+});
 
 routes.get("/my",  async (req:Request, res:Response) => {
     const send = await LookUp.getCommunitiesOverload(req.user.id, userStates.owner);
     res.json(send);
 });
-
-routes.get("/:community/join", communityAcl, async (req:Request, res:Response) => {
-    const comm = await asyncCommGetter.getCommunity(req.params.community);
-    comm.join(req, res);
-});
-
-
-
-routes.get("/:community", communityAcl, async (req:Request, res:Response) => {
-    const comm = await asyncCommGetter.getCommunity(req.params.community);
-    comm.getCommunity(req, res);
-})
-
-
-routes.post("/", upload.single("image"), (req:Request, res:Response) => {
-    Community.createCommunity(req, res);
-})
-
 
 export default routes;

@@ -124,9 +124,11 @@ export class Community {
     async getDetails(req: Request, res: Response) {
         try {
             this.communityDocument = await this.communityDocument
-                .populate({ path: "meta.owner", select: "name email role" });
+                .populate({ path: "meta.owner", select: "name email" })
+                .execPopulate();
             res.json(this.communityDocument.meta);
         } catch (err) {
+            console.log(err);
             res.status(500).json(err);
         }
     }
