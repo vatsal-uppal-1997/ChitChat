@@ -22,7 +22,7 @@ const account = new mongoose.Schema({
         type: String,
         required: true
     },
-    isconfirmed: {
+    isConfirmed: {
         type: Boolean,
         default: false,
         required: true
@@ -65,17 +65,17 @@ account.methods.checkPassword = function (toCheck:string, cb:(err:Error, result:
 
 // Validate role 
 account.path("role").validate(function(role: string): boolean {
-    if (role !== "user" && role !== "admin" && role !== "community builder")
+    if (role !== "user" && role !== "admin" && role !== "communitybuilder")
         return false;
     return true;
-}, "Invalid Phone Number");
+}, "Invalid role");
 
 export interface IAccount extends mongoose.Document {
     user: mongoose.Types.ObjectId | IUserProfile;
     role: string;
     isActive: boolean;
     password: string;
-    isconfirmed: boolean;
+    isConfirmed: boolean;
     checkPassword: (toCheck:string, cb:(err:Error, result:boolean)=>void) => void;
 }
 

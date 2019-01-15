@@ -26,7 +26,7 @@ passport.use(new LocalStrategy(
                     if (!resAcc.isActive)
                         return done(null, false);
                     let role: string;
-                    if (resAcc.isconfirmed === false)
+                    if (resAcc.isConfirmed === false)
                         role = "confirm";
                     else
                         role = resAcc.role
@@ -50,7 +50,7 @@ passport.deserializeUser(function(id, done) {
             if (err)
                 return done(err);
             let role:string;
-            if (res.isconfirmed === false)
+            if (res.isConfirmed === false)
                 role = "confirm";
             else
                 role = res.role

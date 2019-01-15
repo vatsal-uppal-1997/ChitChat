@@ -1,7 +1,7 @@
 import {buildSchema} from 'graphql';
 
 
-const schema = buildSchema(`
+export const schema = buildSchema(`
 
     type CommentMeta {
         owner: User!
@@ -12,6 +12,15 @@ const schema = buildSchema(`
         locked: Boolean
     }
 
+    input CommentMetaInput {
+        owner: ID!
+        date: String!
+        text: String!
+        parentPost: ID!
+        parentComment: ID!
+        locked: Boolean
+    }
+
     type Comment {
         _id: ID!
         meta: CommentMeta!
@@ -19,10 +28,17 @@ const schema = buildSchema(`
     }
 
     type PostMeta {
-        owner: String!
+        owner: User!
         date: String!
         text: String!
         locked:Boolean
+    }
+
+    input PostMetaInput {
+        owner: String!
+        date: String!
+        text: String!
+        locked: Boolean
     }
 
     type Post {
@@ -51,6 +67,13 @@ const schema = buildSchema(`
         isOpen: Boolean!
     }
 
+    input CommunityMetaInput {
+        name: String!
+        image: String!
+        description: String!
+        isOpen: Boolean!
+    }
+
     type Community {
         _id: ID!
         meta: CommunityMeta!
@@ -65,9 +88,21 @@ const schema = buildSchema(`
         status: CommunityPrivileges
     }
 
+    enum UserTypes {
+        admin
+        user
+        communitybuilder
+    }
+
     type Account {
         _id: ID!
         user: ID!
+        role: UserTypes!
+        isActive: Boolean!
+        isConfirmed: Boolean!
+    }
+
+    input AccountInput {
         role: UserTypes!
         isActive: Boolean!
         isConfirmed: Boolean!
@@ -77,7 +112,7 @@ const schema = buildSchema(`
         _id: ID!
         image: String
         email: String!
-        phone: Int!
+        phone: String!
         city: String!
         name: String
         gender: String
@@ -88,16 +123,17 @@ const schema = buildSchema(`
         memberOf: [CommunityMappings!]
     }
 
-    type UserAddables {
+    input UserAddables {
         email: String!
-        phone: Int!
+        phone: String!
         city: String!
         role: String!
+        password: String!
     }
 
-    type UserEditables {
+    input UserEditables {
         image: String
-        phone: Int
+        phone: String
         city: String
         name: String
         gender: String
@@ -111,7 +147,7 @@ const schema = buildSchema(`
         users: [User!]!
         account(uid: ID!): Account
         community(cid: ID!): Community
-        community: [Community!]!
+        communities: [Community!]!
         post(pid: ID!): Post
         comment(commid: ID!): Comment
     }
@@ -119,19 +155,20 @@ const schema = buildSchema(`
     type Mutation {
         addUser(userDetails: UserAddables!): User
         editUser(uid: ID!, newData: UserEditables!): User
-        editAccount(uid: ID!, newData: Account!): Account
-        addCommunity(communityDetails: CommunityMeta!): Community
-        editCommunity(cid: ID!, newData: CommunityMeta!): Community
+        changeUserPassword(uid: ID!, password:String!): Boolean
+        editAccount(uid: ID!, newData: AccountInput!): Account
+        addCommunity(communityDetails: CommunityMetaInput!): Community
+        editCommunity(cid: ID!, newData: CommunityMetaInput!): Community
         addCommunityMember(cid: ID!, member: ID!): Boolean
         makeCommunityAdmin(cid: ID!, member: ID!): Boolean
         removeCommunityAdmin(cid: ID!, member: ID!): Boolean
         requestCommunityActions(cid: ID!, member: ID!, action: CommunityRequestActions): Boolean
         removeCommunityMember(cid: ID!, member: ID!): Boolean
-        addPost(postDetails: PostMeta!): Post
-        editPost(pid: ID!, newData: PostMeta!):Post
+        addPost(postDetails: PostMetaInput!): Post
+        editPost(pid: ID!, newData: PostMetaInput!):Post
         removePost(pid: ID!): Boolean
-        addComment(commentDetails: CommentMeta): Comment
-        editComment(commid: ID!, newData: CommentMeta): Comment
+        addComment(commentDetails: CommentMetaInput): Comment
+        editComment(commid: ID!, newData: CommentMetaInput): Comment
         removeComment(commid: ID!): Boolean      
     }
 `);

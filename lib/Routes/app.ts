@@ -4,6 +4,10 @@ import * as mongoose from "mongoose";
 import * as mongoStore from "connect-mongo";
 import * as session from "express-session";
 import passport from "./passportConfig";
+import {schema} from "../models/GraphQlSchema";
+import {QueryResolverUser} from "../Controllers/Resolvers/Query/QueryResolverUser";
+import * as graphqlHTTP from "express-graphql";
+
 
 class App {
     public app: express.Application;
@@ -27,6 +31,11 @@ class App {
         this.app.use(passport.initialize());
         this.app.use(passport.session());
         this.app.use(express.static('uploads'))
+        this.app.use("/graphql", graphqlHTTP(async (req, res, graphQLParams): Promise<graphqlHTTP.OptionsData> => ({
+            schema: schema,
+            rootValue: new QueryResolverUser(req),
+            graphiql: true
+        })));
     }
 }
 
