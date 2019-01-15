@@ -120,11 +120,15 @@ export class QueryResolverUser {
     }
 
     async addCommunity(args): Promise<ICommunity> {
-        const communityDetails: ICommunityMeta = args.communityDetails;
+        const communityDetails: ICommunityMeta = {meta: args.communityDetails};
+        console.log(communityDetails);
         if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
             throw new AuthenticationError("Authentication failed");
         try {
-            communityDetails.owner = this.request.user.id;
+            if (this.debug)
+                communityDetails.owner = mongoose.Types.ObjectId("5c2371644a0ed72e90b0ad1e");
+            else
+                communityDetails.owner = this.request.user.id;
             const community = new communityModel(communityDetails);
             await community.save();
             return community;
