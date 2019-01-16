@@ -161,7 +161,7 @@ export class QueryResolverUser {
         }
     }
 
-    async addCommunityMember(args): Promise<boolean> {
+    async joinCommunity(args): Promise<boolean> {
         const cid: string = args.cid;
         const member: string = args.member;
         if (!this.debug && this.request.user.id === member)
@@ -272,6 +272,51 @@ export class QueryResolverUser {
                     });
             } else {
                 throw new Error("User is not a member");
+            }
+            return true;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    async removeCommunityAdmin(args) {
+        const cid: string = args.cid;
+        const member: string = args.member;
+        if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
+            throw new AuthenticationError("Authentication failed");
+        try {
+            const communityOld = await communityModel
+                .findById(cid);
+            const communityNew = await communityModel
+                .findByIdAndUpdate(cid,
+                    {
+                        "$pull": {
+                            admins: member
+                        }
+                    },
+                    {
+                        new: true
+                    });
+            if (communityOld.admins.length != communityNew.admins.length) {
+                await communityModel
+                    .findByIdAndUpdate(cid,
+                        {
+                            "$addToSet": {
+                                members: member
+                            }
+                        });
+                await userProfile
+                    .findById(member)
+                    .exec()
+                    .then(async (profile) => {
+                        for (let i of profile.memberOf) {
+                            if (i.community.toString() === cid)
+                                i.status = status.member;
+                        }
+                        await profile.save();
+                    });
+            } else {
+                throw new Error("User is not an admin");
             }
             return true;
         } catch (err) {
