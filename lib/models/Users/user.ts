@@ -53,6 +53,7 @@ const user = new mongoose.Schema({
     memberOf: {
         type: [ 
             {
+                _id: false,
                 community: {
                     type: mongoose.Types.ObjectId,
                     ref: "Community"
@@ -88,6 +89,11 @@ export enum status {
     member = "member",
     owner = "owner",
     requested = "requested"
+}
+
+export interface ICommunityStatusPair {
+    community: mongoose.Types.ObjectId | ICommunity,
+    status: status
 }
 
 export interface ICommunityStatusPair {

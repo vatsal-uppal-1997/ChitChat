@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import * as mongoose from "mongoose";
-import { userModel, userProfile, IUserProfile, IUser, } from "../../../models/Users/user";
+import { userModel, userProfile, IUserProfile, IUser, ICommunityStatusPair, status } from "../../../models/Users/user";
 import { accountModel, IAccount } from "../../../models/Users/account";
 import { ICommunityMeta, communityModel, ICommunity } from "../../../models/Communities/community";
+
+mongoose.Types.ObjectId.prototype.valueOf = function () {
+    return this.toString();
+}
 
 enum UsertTypes {
     admin = "admin",
@@ -41,7 +45,7 @@ class AuthenticationError extends Error {
         this.name = "Authentication Error";
     }
 }
-
+// TODO Populate fields
 export class QueryResolverUser {
     request: Request;
     debug: boolean;
@@ -77,8 +81,8 @@ export class QueryResolverUser {
     }
 
     async editUser(args): Promise<IUserProfile> {
-        const uid:string = args.uid;
-        const newData:UserEditables = args.newData;
+        const uid: string = args.uid;
+        const newData: UserEditables = args.newData;
         if (!this.debug && mongoose.Types.ObjectId(uid).equals(this.request.user.id))
             throw new AuthenticationError("Authentication failed");
         try {
@@ -90,12 +94,12 @@ export class QueryResolverUser {
     }
 
     async changeUserPassword(args): Promise<boolean> {
-        const uid:string = args.uid;
+        const uid: string = args.uid;
         const password = args.password;
         if (!this.debug && mongoose.Types.ObjectId(uid).equals(this.request.user.id))
             throw new AuthenticationError("Authentication failed");
         try {
-            const userAccount = await accountModel.findOne({user: uid});
+            const userAccount = await accountModel.findOne({ user: uid });
             userAccount.password = password;
             await userAccount.save();
             return true;
@@ -105,14 +109,14 @@ export class QueryResolverUser {
     }
 
     async editAccount(args): Promise<IAccount> {
-        const uid:string = args.uid;
-        const newData:Account = args.newData;
+        const uid: string = args.uid;
+        const newData: Account = args.newData;
         console.log(newData);
         if (!this.debug && this.request.user.role.includes(UsertTypes.admin))
             throw new AuthenticationError("Authentication failed");
         try {
             let userAccount = null;
-            userAccount = await accountModel.findOneAndUpdate({user: uid}, newData, { new: true });
+            userAccount = await accountModel.findOneAndUpdate({ user: uid }, newData, { new: true });
             return userAccount;
         } catch (err) {
             throw err;
@@ -120,7 +124,7 @@ export class QueryResolverUser {
     }
 
     async addCommunity(args): Promise<ICommunity> {
-        const communityDetails: ICommunityMeta = {meta: args.communityDetails};
+        const communityDetails: ICommunityMeta = args.communityDetails;
         console.log(communityDetails);
         if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
             throw new AuthenticationError("Authentication failed");
@@ -129,7 +133,7 @@ export class QueryResolverUser {
                 communityDetails.owner = mongoose.Types.ObjectId("5c2371644a0ed72e90b0ad1e");
             else
                 communityDetails.owner = this.request.user.id;
-            const community = new communityModel(communityDetails);
+            const community = new communityModel({ meta: communityDetails });
             await community.save();
             return community;
         } catch (err) {
@@ -138,14 +142,138 @@ export class QueryResolverUser {
     }
 
     async editCommunity(args): Promise<ICommunity> {
-        const cid:string = args.cid;
-        const newData:ICommunityMeta = args.newData;
+        const cid: string = args.cid;
+        const newData: ICommunityMeta = args.newData;
         if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
             throw new AuthenticationError("Authentication failed");
         try {
-            newData.owner = this.request.user.id;
-            const community = await communityModel.findByIdAndUpdate(cid, newData);
+            if (this.debug)
+                newData.owner = mongoose.Types.ObjectId("5c2371644a0ed72e90b0ad1e");
+            else
+                newData.owner = this.request.user.id;
+            const community = await communityModel
+                .findByIdAndUpdate(cid,
+                    { meta: newData },
+                    { new: true });
             return community;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    async addCommunityMember(args): Promise<boolean> {
+        const cid: string = args.cid;
+        const member: string = args.member;
+        if (!this.debug && this.request.user.id === member)
+            throw new AuthenticationError("Authentication failed");
+        try {
+            await communityModel
+                .findById(cid)
+                .exec()
+                .then(async (val: ICommunity) => {
+                    if (val.meta.isOpen) {
+                        await userProfile
+                            .findByIdAndUpdate(member,
+                                {
+                                    "$addToSet": {
+                                        memberOf: {
+                                            community: cid,
+                                            status: status.member
+                                        }
+                                    }
+                                });
+                        await communityModel
+                            .findByIdAndUpdate(cid,
+                                {
+                                    "$addToSet": {
+                                        members: member
+                                    }
+                                });
+                    } else {
+                        await communityModel
+                            .findByIdAndUpdate(cid,
+                                {
+                                    "$addToSet": {
+                                        requests: member
+                                    }
+                                });
+                    }
+                });
+            return true;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    async removeCommunityMember(args): Promise<boolean> {
+        const cid: string = args.cid;
+        const member: string = args.member;
+        if (!this.debug && (this.request.user.role === UsertTypes.communitybuilder || this.request.user.id === member))
+            throw new AuthenticationError("Authentication failed");
+        try {
+            await userProfile
+                .findByIdAndUpdate(member,
+                    {
+                        "$pull": {
+                            memberOf: {
+                                community: cid,
+                                status: status.member
+                            }
+                        }
+                    });
+            await communityModel
+                .findByIdAndUpdate(cid,
+                    {
+                        "$pull": {
+                            members: member
+                        }
+                    });
+            return true;
+        } catch (err) {
+            throw err;
+        }
+    }
+
+    async makeCommunityAdmin(args) {
+        const cid: string = args.cid;
+        const member: string = args.member;
+        if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
+            throw new AuthenticationError("Authentication failed");
+        try {
+            const communityOld = await communityModel
+                .findById(cid);
+            const communityNew = await communityModel
+                .findByIdAndUpdate(cid,
+                    {
+                        "$pull": {
+                            members: member
+                        }
+                    },
+                    {
+                        new: true
+                    });
+            if (communityOld.members.length != communityNew.members.length) {
+                await communityModel
+                    .findByIdAndUpdate(cid,
+                        {
+                            "$addToSet": {
+                                admins: member
+                            }
+                        });
+                await userProfile
+                    .findById(member)
+                    .exec()
+                    .then(async (profile) => {
+                        for (let i of profile.memberOf) {
+                            if (i.community.toString() === cid)
+                                i.status = status.admin;
+                        }
+                        await profile.save();
+                    });
+            } else {
+                throw new Error("User is not a member");
+            }
+            return true;
         } catch (err) {
             throw err;
         }

@@ -160,10 +160,10 @@ export const schema = buildSchema(`
         addCommunity(communityDetails: CommunityMetaInput!): Community
         editCommunity(cid: ID!, newData: CommunityMetaInput!): Community
         addCommunityMember(cid: ID!, member: ID!): Boolean
+        removeCommunityMember(cid: ID!, member: ID!): Boolean
         makeCommunityAdmin(cid: ID!, member: ID!): Boolean
         removeCommunityAdmin(cid: ID!, member: ID!): Boolean
         requestCommunityActions(cid: ID!, member: ID!, action: CommunityRequestActions): Boolean
-        removeCommunityMember(cid: ID!, member: ID!): Boolean
         addPost(postDetails: PostMetaInput!): Post
         editPost(pid: ID!, newData: PostMetaInput!):Post
         removePost(pid: ID!): Boolean
