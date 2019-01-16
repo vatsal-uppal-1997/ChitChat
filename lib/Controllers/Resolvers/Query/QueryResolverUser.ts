@@ -31,6 +31,11 @@ interface UserEditables {
     description: string;
 }
 
+enum CommunityRequestActions {
+    accept = "accept",
+    reject = "reject"
+}
+
 interface Account {
     _id: string;
     user: string;
@@ -54,7 +59,7 @@ export class QueryResolverUser {
         this.debug = debug;
     }
 
-    async addUser(args): Promise<IUser> {
+    async addUser(args) {
         if (!this.debug && this.request.user.role.includes(UsertTypes.admin))
             throw new AuthenticationError("Only admin can add a user");
         const userDetails: UserAddables = args.userDetails;
@@ -80,7 +85,7 @@ export class QueryResolverUser {
         }
     }
 
-    async editUser(args): Promise<IUserProfile> {
+    async editUser(args) {
         const uid: string = args.uid;
         const newData: UserEditables = args.newData;
         if (!this.debug && mongoose.Types.ObjectId(uid).equals(this.request.user.id))
@@ -93,7 +98,7 @@ export class QueryResolverUser {
         }
     }
 
-    async changeUserPassword(args): Promise<boolean> {
+    async changeUserPassword(args) {
         const uid: string = args.uid;
         const password = args.password;
         if (!this.debug && mongoose.Types.ObjectId(uid).equals(this.request.user.id))
@@ -108,7 +113,7 @@ export class QueryResolverUser {
         }
     }
 
-    async editAccount(args): Promise<IAccount> {
+    async editAccount(args) {
         const uid: string = args.uid;
         const newData: Account = args.newData;
         console.log(newData);
@@ -123,7 +128,7 @@ export class QueryResolverUser {
         }
     }
 
-    async addCommunity(args): Promise<ICommunity> {
+    async addCommunity(args) {
         const communityDetails: ICommunityMeta = args.communityDetails;
         console.log(communityDetails);
         if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
@@ -141,7 +146,7 @@ export class QueryResolverUser {
         }
     }
 
-    async editCommunity(args): Promise<ICommunity> {
+    async editCommunity(args) {
         const cid: string = args.cid;
         const newData: ICommunityMeta = args.newData;
         if (!this.debug && this.request.user.role.includes(UsertTypes.communitybuilder))
@@ -161,7 +166,7 @@ export class QueryResolverUser {
         }
     }
 
-    async joinCommunity(args): Promise<boolean> {
+    async joinCommunity(args) {
         const cid: string = args.cid;
         const member: string = args.member;
         if (!this.debug && this.request.user.id === member)
@@ -205,7 +210,7 @@ export class QueryResolverUser {
         }
     }
 
-    async removeCommunityMember(args): Promise<boolean> {
+    async removeCommunityMember(args) {
         const cid: string = args.cid;
         const member: string = args.member;
         if (!this.debug && (this.request.user.role === UsertTypes.communitybuilder || this.request.user.id === member))
@@ -322,5 +327,11 @@ export class QueryResolverUser {
         } catch (err) {
             throw err;
         }
+    }
+
+    async requestCommunityActions(args) {
+        const cid: string = args.cid;
+        const member: string = args.member;
+        const action: CommunityRequestActions = args.action;
     }
 }
