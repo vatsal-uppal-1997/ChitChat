@@ -79,7 +79,7 @@ export class QueryResolverUser {
         try {
             const newUser = await user.save();
             await account.save();
-            return newUser;
+            return newUser.id;
         } catch (err) {
             throw err;
         }
@@ -92,7 +92,7 @@ export class QueryResolverUser {
             throw new AuthenticationError("Authentication failed");
         try {
             const updatedUser = await userProfile.findByIdAndUpdate(uid, newData, { new: true });
-            return updatedUser;
+            return updatedUser.id;
         } catch (err) {
             throw err;
         }
@@ -122,7 +122,7 @@ export class QueryResolverUser {
         try {
             let userAccount = null;
             userAccount = await accountModel.findOneAndUpdate({ user: uid }, newData, { new: true });
-            return userAccount;
+            return userAccount.id;
         } catch (err) {
             throw err;
         }
@@ -140,7 +140,7 @@ export class QueryResolverUser {
                 communityDetails.owner = this.request.user.id;
             const community = new communityModel({ meta: communityDetails });
             await community.save();
-            return community;
+            return community.id;
         } catch (err) {
             throw err;
         }
@@ -157,10 +157,13 @@ export class QueryResolverUser {
             else
                 newData.owner = this.request.user.id;
             const community = await communityModel
+                .findById(cid);
+            const newMeta = Object.assign(community.meta, newData);
+            await communityModel
                 .findByIdAndUpdate(cid,
-                    { meta: newData },
+                    { meta: newMeta },
                     { new: true });
-            return community;
+            return community.id;
         } catch (err) {
             throw err;
         }
@@ -169,24 +172,38 @@ export class QueryResolverUser {
     async joinCommunity(args) {
         const cid: string = args.cid;
         const member: string = args.member;
-        if (!this.debug && this.request.user.id === member)
+        const override = args.override === undefined ? false : args.override;
+        if (!this.debug && (this.request.user.id === member || override))
             throw new AuthenticationError("Authentication failed");
         try {
             await communityModel
                 .findById(cid)
                 .exec()
                 .then(async (val: ICommunity) => {
-                    if (val.meta.isOpen) {
-                        await userProfile
-                            .findByIdAndUpdate(member,
-                                {
-                                    "$addToSet": {
-                                        memberOf: {
-                                            community: cid,
-                                            status: status.member
+                    if (val.meta.isOpen || override) {
+                        if (!override)
+                            await userProfile
+                                .findByIdAndUpdate(member,
+                                    {
+                                        "$addToSet": {
+                                            memberOf: {
+                                                community: cid,
+                                                status: status.member
+                                            }
                                         }
-                                    }
-                                });
+                                    });
+                        else
+                            await userProfile
+                                .findById(member)
+                                .exec()
+                                .then(async (profile) => {
+                                    for (let i of profile.memberOf)
+                                        if (i.community.toString() === cid) {
+                                            i.status = status.member;
+                                            break;
+                                        }
+                                    await profile.save();
+                                })
                         await communityModel
                             .findByIdAndUpdate(cid,
                                 {
@@ -195,6 +212,16 @@ export class QueryResolverUser {
                                     }
                                 });
                     } else {
+                        await userProfile
+                            .findByIdAndUpdate(member,
+                                {
+                                    "$addToSet": {
+                                        memberOf: {
+                                            community: cid,
+                                            status: status.requested
+                                        }
+                                    }
+                                });
                         await communityModel
                             .findByIdAndUpdate(cid,
                                 {
@@ -329,9 +356,53 @@ export class QueryResolverUser {
         }
     }
 
+    async isRequestingUserAdmin(communityId: string) {
+        if (this.debug)
+            return true;
+        const profile = await userProfile.findById(this.request.user.id);
+        for (let i of profile.memberOf)
+            if (i.community.toString() === communityId && i.status === status.admin)
+                return true;
+        return false;
+    }
+
     async requestCommunityActions(args) {
         const cid: string = args.cid;
         const member: string = args.member;
         const action: CommunityRequestActions = args.action;
+        const isAdmin = await this.isRequestingUserAdmin(cid);
+        if (!this.debug && (this.request.user.role.includes(UsertTypes.communitybuilder) || isAdmin))
+            throw new AuthenticationError("Authentication failed");
+        try {
+            const community = await communityModel.findById(cid);
+            if (community.meta.isOpen === true)
+                throw new Error("Cannot accept or reject requests in an open community");
+            await communityModel.findByIdAndUpdate(cid, {
+                "$pull": {
+                    requests: member
+                }
+            });
+            if (action === CommunityRequestActions.accept) {
+                const fakeArgs = {
+                    cid,
+                    member,
+                    override: true
+                }
+                this.joinCommunity(fakeArgs);
+            } else {
+                await userProfile
+                    .findByIdAndUpdate(member,
+                        {
+                            "$pull": {
+                                memberOf: {
+                                    community: cid
+                                }
+                            }
+                        });
+            }
+            return true;
+        } catch (err) {
+            throw err;
+        }
     }
 }

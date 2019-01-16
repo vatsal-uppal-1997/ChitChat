@@ -67,6 +67,13 @@ export const schema = buildSchema(`
         isOpen: Boolean!
     }
 
+    input EditCommunityMeta {
+        name: String
+        image: String
+        description: String
+        isOpen: Boolean
+    }
+
     input CommunityMetaInput {
         name: String!
         image: String!
@@ -153,12 +160,12 @@ export const schema = buildSchema(`
     }
 
     type Mutation {
-        addUser(userDetails: UserAddables!): User
-        editUser(uid: ID!, newData: UserEditables!): User
+        addUser(userDetails: UserAddables!): ID
+        editUser(uid: ID!, newData: UserEditables!): ID
         changeUserPassword(uid: ID!, password:String!): Boolean
-        editAccount(uid: ID!, newData: AccountInput!): Account
-        addCommunity(communityDetails: CommunityMetaInput!): Community
-        editCommunity(cid: ID!, newData: CommunityMetaInput!): Community
+        editAccount(uid: ID!, newData: AccountInput!): ID
+        addCommunity(communityDetails: CommunityMetaInput!): ID
+        editCommunity(cid: ID!, newData: EditCommunityMeta!): ID
         joinCommunity(cid: ID!, member: ID!): Boolean
         removeCommunityMember(cid: ID!, member: ID!): Boolean
         makeCommunityAdmin(cid: ID!, member: ID!): Boolean
