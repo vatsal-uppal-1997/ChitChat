@@ -216,8 +216,7 @@ export class QueryResolverUser {
                     {
                         "$pull": {
                             memberOf: {
-                                community: cid,
-                                status: status.member
+                                community: cid
                             }
                         }
                     });
@@ -225,7 +224,8 @@ export class QueryResolverUser {
                 .findByIdAndUpdate(cid,
                     {
                         "$pull": {
-                            members: member
+                            members: member,
+                            admins: member
                         }
                     });
             return true;
